@@ -1,0 +1,510 @@
+---
+title: "r5r_update"
+output: html_document
+date: "2023-02-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## setup library and working directory
+
+```{r}
+library(r5r)
+options(java.parameters = "-Xmx2G")
+library(osmextract)
+library(opentripplanner)
+library(sf)
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(tmap)
+library(tigris)
+library(interp)
+
+setwd("C:/study/R_experiment")
+```
+
+
+# fetching OSM pbf data for two counties 
+
+```{r, eval=T}
+SLO_file <- oe_match("Ohio")#,provider = "bbbike")
+
+SLO_streets <- oe_read(SLO_file$url, 
+                           provider = "openstreetmap_fr", 
+                           download_directory = "state", 
+                           layer= "lines", 
+                           quiet = TRUE) %>%
+  filter(!is.na(highway))
+
+street_clip <- SLO_streets[place,] 
+
+tmap_mode("plot")
+tm_shape(SLO_streets) + tm_lines()
+```
+
+```{r}
+graph_path <- c("C:/study/R_experiment/state")
+r5r_core <- setup_r5(graph_path, verbose = FALSE)
+```
+
+```{r}
+x <- "ttt"
+print(paste("I need:",x))
+
+grand_ttm$process_county[grand_ttm$County == "Auglaize County"|grand_ttm$County == "Champaign County"|grand_ttm$County == "Hardin County"|grand_ttm$County == "Logan County"|grand_ttm$County == "Shelby County"| grand_ttm$County == "Union County"] <- "Logan"
+
+```
+
+
+# a for loop for other counties car ttm
+
+```{r}
+# "Williams","Fulton", "Defiance", "Henry", "Logan", "Paulding", "Putnam", "Wood", "Hancock",  "Van Wert", "Allen", "Hardin","Mercer","Auglaize", "Union", "Champaign","Shelby", "Darke", "Miami","Clark","Madison","Preble", "Greene","Fayette","Warren","Clinton","Clermont","Highland","Brown","Adams")
+
+#"Williams","Fulton", "Defiance", "Henry", "Logan", "Paulding", "Putnam", "Wood", "Hancock",  "Van Wert",
+                 #"Allen"
+county_list <- c( "Hardin","Mercer","Auglaize", "Union", "Champaign","Shelby", "Darke", "Miami","Clark",
+                 "Madison","Preble","Greene","Fayette","Warren","Clinton","Clermont","Highland","Brown","Adams",
+                 "Ottawa","Sandusky","Seneca","Marion","Delaware","Ross","Pike","Scioto","Huron","Crawford",
+                 "Morrow","Richland","Knox","Licking","Fairfield","Hocking","Vinton","Jackson","Lawrence","Lorain",
+                 "Lake","Ashtabula","Geauga","Medina","Ashland","Wayne","Columbiana","Carroll","Jefferson","Harrison",
+                 "Tuscarawas","Holmes","Coshocton","Muskingum","Guernsey","Belmont","Monroe","Noble","Morgan","Perry",
+                 "Washington","Meigs","Gallia")
+
+for(j in 1:length(county_list)){
+  county <- county_list[j]
+  
+  CT_center = read.csv("C:/study/public health/CDC/population_weighted_CT_center.csv", as.is=T) %>%  st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = 4326) #%>% st_transform(26917)  #all census tract center
+  tracts <- tracts("ohio") %>% st_transform(4326) #all ohio tract polygon
+  CT_center <- st_join(CT_center, tracts, join=st_within, left=T) %>% rename(id=GEOID) #centroids joined with polygon for GEOID
+  # filtering specific county boundary
+  place <- counties("ohio") %>%
+    st_transform(4326) %>%
+    filter(NAME==county) %>%
+    mutate(id=GEOID)
+  place_buf <- st_buffer(place, 20000, endCapStyle = "FLAT") #20 km buffer around the county
+  pop_center <- CT_center[place,] #selected centers within the county
+  tract_sel <- tracts[place,] %>% rename(id=GEOID) #selected tracts within the county
+  
+  updated_data = read.csv("cdc_vax_providers.csv", as.is=T) %>% rename(id=provider_location_guid) #all vax location
+  vax_loc = st_as_sf(updated_data, coords = c("longitude", "latitude"), crs = 4326) #%>% st_transform(26917)
+  vac_loc <- vax_loc[place_buf,] #vax loc of the county
+  vac_loc <- vac_loc %>% distinct(id, .keep_all = TRUE)
+  
+  
+  for(i in 1:nrow(vac_loc)){
+    print(paste0("Records processed:" , i))
+    ttm_unit = travel_time_matrix(r5r_core = r5r_core,
+                            origins = vac_loc[i,],
+                            destinations = pop_center,
+                            mode = c("CAR"),#TRANSIT","WALK"),#
+                            departure_datetime = as.POSIXct("25-05-2022 11:00:00",
+                                                            format = "%d-%m-%Y %H:%M:%S"),
+                            max_walk_dist = 500,
+                            max_trip_duration = 500,
+                            verbose = FALSE)
+    if(i==1){ttm = ttm_unit} else{
+      ttm=rbind(ttm_unit,ttm)}
+  }
+  summary(ttm$travel_time)
+  # percentage of tracts reachable in 45 mins
+  below45 <- ttm %>% filter(travel_time<45)
+  length(unique(below45$toId))/length(unique(ttm$toId))*100
+  
+  
+  #add facility information
+  colnames(ttm)[1] = "id"
+  ttm$id <- as.character(ttm$id)
+  ttm_county <- merge(ttm,vac_loc,all.x=T, by="id")
+  colnames(ttm)[1] = "fromId"
+  colnames(ttm_county)[1] = "fromId"
+  #add date, mode, county names
+  ttm_county <- ttm_county %>% mutate(processing_date = "5/1/23" , mode="car", process_county=county)
+  
+  grand_ttm <- rbind(grand_ttm, ttm_county)
+  print(paste("Processing done for:",county))
+}
+
+```
+
+
+#set county name
+```{r}
+county <- "Williams"
+```
+
+# getting place (county) as destination
+
+```{r}
+
+
+CT_center = read.csv("C:/study/public health/CDC/population_weighted_CT_center.csv", as.is=T) %>%  st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = 4326) #%>% st_transform(26917)  #all census tract center
+
+tracts <- tracts("ohio") %>% st_transform(4326) #all ohio tract polygon
+
+CT_center <- st_join(CT_center, tracts, join=st_within, left=T) %>% rename(id=GEOID) #centroids joined with polygon for GEOID
+
+# filtering specific county boundary
+place <- counties("ohio") %>%
+  st_transform(4326) %>%
+  filter(NAME==county) %>%
+  mutate(id=GEOID)
+
+place_buf <- st_buffer(place, 20000, endCapStyle = "FLAT") #20 km buffer around the county
+
+pop_center <- CT_center[place,] #selected centers within the county
+
+tract_sel <- tracts[place,] %>% rename(id=GEOID) #selected tracts within the county
+
+```
+
+
+
+# grid analytics (not needed)
+
+```{r, eval=FALSE}
+#making grids on the place
+grid <- st_sf(st_make_grid(place, 
+                           square = T, 
+                           cellsize = 0.005,
+                           #n = c(500,500),
+                           what = "polygons")) %>%
+  st_filter(place) 
+
+colnames(grid) <- "geometry"
+st_geometry(grid) <- "geometry"
+
+grid <- grid %>%
+  mutate(id = seq(1, length(grid$geometry), by=1))
+
+#tm_shape(grid) + tm_borders()
+
+grid_center <- st_centroid(grid)
+
+
+coords <- st_coordinates(grid_center)
+lat <- coords[, 2]
+long <- coords[, 1]
+
+# Combine with original data and create new data frame
+grid_center <- cbind(grid_center, lat, long)
+
+
+
+
+#tm_shape(grid_center) + tm_dots()
+
+```
+
+
+
+# getting origin locations (pediatric locations)
+
+```{r}
+
+updated_data = read.csv("cdc_vax_providers.csv", as.is=T) %>% rename(id=provider_location_guid) #all vax location
+
+vax_loc = st_as_sf(updated_data, coords = c("longitude", "latitude"), crs = 4326) #%>% st_transform(26917)
+
+vac_loc <- vax_loc[place_buf,] #vax loc of the county
+
+vac_loc <- vac_loc %>% distinct(id, .keep_all = TRUE)
+
+```
+
+```{r, eval=F}
+# process latlong columns if not present with any sf object
+coords <- st_coordinates(vax_loc)
+lat <- coords[, 2]
+long <- coords[, 1]
+vax_loc <- cbind(vax_loc, lat, long)
+
+
+
+
+#ped_lucas = pediatricLocs  %>% filter(County=="Lucas County")
+
+#ped_hamilton <-st_read("C:/study/public health/CDC/shapes/fac_hamilton.shp") %>% rename(id = provider_l)
+
+
+#tm_shape(ped_cuyahoga) + tm_dots()
+
+
+
+
+#pediatricLocs = rbind(ped_hamilton,ped_cuyahoga) %>%  rename(id = provider_l) # to cpmply with r5r
+  #slice(1:2) # removed the duplicates
+```
+
+
+
+# initiate r5r
+```{r, eval=F}
+graph_path <- c("C:/study/R_experiment/graphs/")
+r5r_core <- setup_r5(paste0(graph_path,county), verbose = FALSE)
+```
+
+```{r, echo=F }
+ #2021-11-03 12:10:00" # (cuyahoga)"2022-07-11 11:00:05"#(athens) "2017-11-18 11:00:00" #erie "2022-08-24 11:00:00" #(lucas) "2021-09-13 11:00:22" 
+# (trumbull)"2022-06-06 11:00:00" #(portage) "2019-12-16 13:54:00"  #(stark) "2022-05-31 11:04:00" # (summit) "2022-07-26 10:10:00" 
+#butler "2022-07-13 12:55:00" # montgomery 2022-05-25 17:07:00" (saturday by mistake) # franklin 2021-11-03 12:10:00" #hamilton "2022-06-13 05:15:00" #allen 
+
+#car: cuyahoga, hamilton, franklin, athens,lucas, trumbull, portage, stark,summit, butler, montgomery, allen
+
+for(i in 1:nrow(vac_loc)){
+  print(paste0("Records processed:" , i))
+  ttm_unit = travel_time_matrix(r5r_core = r5r_core,
+                          origins = vac_loc[i,],
+                          destinations = pop_center,
+                          mode = c("CAR"),#TRANSIT","WALK"),#
+                          departure_datetime = as.POSIXct("25-05-2022 11:00:00",
+                                                          format = "%d-%m-%Y %H:%M:%S"),
+                          max_walk_dist = 500,
+                          max_trip_duration = 500,
+                          verbose = FALSE)
+  if(i==1){ttm = ttm_unit} else{
+    ttm=rbind(ttm_unit,ttm)}
+}
+
+summary(ttm$travel_time)
+
+# percentage of tracts reachable in 45 mins
+below45 <- ttm %>% filter(travel_time<45)
+
+length(unique(below45$toId))/length(unique(ttm$toId))*100
+
+
+
+```
+
+
+```{r, eval=F}
+
+
+# creating travel time matrix
+
+ttm1_20 <- travel_time_matrix(r5r_core = r5r_core,
+                          origins = vac_loc[1:20,],
+                          destinations = pop_center,
+                          mode = c("TRANSIT","WALK"),
+                          departure_datetime = as.POSIXct("13-06-2022 05:15:00",
+                                                          format = "%d-%m-%Y %H:%M:%S"),
+                          max_walk_dist = 500,
+                          max_trip_duration = 500,
+                          verbose = FALSE)
+```
+
+#fact check
+```{r, eval=F}
+(ttm)
+```
+
+
+```{r, eval=F}
+#select some vaccine location
+vac_sel <- vac_loc %>% filter(id=="e9b46bff-c42c-47b7-ba94-ec00c0345f9d")
+
+#select some population center
+pop_sub <- pop_center %>% filter(id=="39113000100"|id=="39113000200"|id=="39113000700")
+
+#select matched entries from ttm
+ttm_sel <- grand_ttm %>% 
+  filter(mode=="car") %>%
+  filter(toId=="39113000100"|toId=="39113000200"|toId=="39113000700")  %>%
+  filter(fromId=="e9b46bff-c42c-47b7-ba94-ec00c0345f9d")
+
+# record the travel time
+ttm_sel
+
+#find the locations and check from google map
+tmap_mode("view")
+
+tm_shape(pop_sub) +tm_dots() + tm_text("id") +
+  tm_shape(vac_sel) +tm_dots("red") + tm_text("Address") 
+```
+
+
+
+# process ttm for storage
+```{r}
+
+#vac_uniq <- vac_loc %>% distinct(id, .keep_all = TRUE)
+#ttm_uniq <- ttm %>% distinct()
+
+#add facility information
+colnames(ttm)[1] = "id"
+ttm$id <- as.character(ttm$id)
+ttm_county <- merge(ttm,vac_loc,all.x=T, by="id")
+
+colnames(ttm)[1] = "fromId"
+colnames(ttm_county)[1] = "fromId"
+
+#add tract information
+#colnames(ttm_county)[2] = "id" #set it for ttm_county
+#ttm_county$id <- as.character(ttm_county$id)
+#ttm_county <- left_join(ttm_county,tract_sel, by="id")
+#colnames(ttm_county)[2] = "toId"
+
+#add date, mode, county names
+ttm_county <- ttm_county %>% mutate(processing_date = "5/1/23" , mode="car", process_county=county)
+
+#from the ttm if I need all tracts of a county, with the status of travel time cutoff, from certain type of facility, created in some date
+```
+
+```{r}
+grand_ttm <- ttm_county
+grand_ttm <- read.csv("grand_ttm.csv", header = T)
+```
+
+```{r}
+grand_ttm <- rbind(grand_ttm, ttm_county)
+```
+
+```{r}
+grand_save <- write.csv(grand_ttm, "grand_ttm62C.csv")
+```
+
+
+
+#build tract subset as isochrones from vac location (change into grid in place of tract_sel as needed)
+```{r}
+ttm$id <- as.character(ttm$id)
+colnames(ttm)[2] = "id"  #change fromID to id to match with grid id
+
+test <- ttm %>%
+  merge(tract_sel, by="id", all.x=T) %>% #join grids
+  filter(travel_time<10) %>% #filter out other times
+  group_by(fromId) %>% #from every vac location
+  summarize(geometry = st_union(geometry)) %>% #dissolve all the grids within the time cutoff
+  st_as_sf() 
+  #summarize(iso = aggregate(id))
+ 
+nrow(test)
+tm_shape(test) + tm_polygons("fromId")
+```
+
+
+
+```{r, eval=F}
+# extract OSM network
+street_net <- street_network_to_sf(r5r_core)
+
+```
+
+# grid's travel time to the nearest facility.
+```{r}
+
+#grid_center_df <- grid_center %>% st_drop_geometry() %>% as.data.frame.table()
+colnames(grid_center)[1] <- "toId"
+
+grid_center$toId <- as.character(grid_center$toId)
+
+# add coordinates of destinations to travel time matrix
+
+ttm_j <- left_join(ttm,grid_center, by="toId", copy = F)
+
+#ttm[grid_center_df, on=c('toId' ='id'), `:=`(lon = i.lon, lat = i.lat)]
+
+# interpolate estimates to get spatially smooth result
+travel_times.interp <- with(na.omit(ttm_j), interp(long, lat, travel_time, duplicate = 'mean')) %>%
+                        with(cbind(travel_time=as.vector(z),  # Column-major order
+                                   x=rep(x, times=length(y)),
+                                   y=rep(y, each=length(x)))) %>%
+                            as.data.frame() %>% na.omit()
+
+# find isochrone's bounding box to crop the map below
+bb_x <- c(min(travel_times.interp$x), max(travel_times.interp$x))
+bb_y <- c(min(travel_times.interp$y), max(travel_times.interp$y))
+
+#x <- st_as_sf(travel_times.interp, coords = c("x", "y"), crs = 4326)
+
+```
+
+#visualize the minimum travel time
+```{r}
+# plot
+p <- ggplot(travel_times.interp) +
+  #geom_sf(data = street_net$edges, color = "gray55", size=0.01, alpha = 0.7) +
+  geom_contour_filled(aes(x=x, y=y, z=travel_time), alpha=.7) +
+  geom_point(aes(x=long, y=lat, color='Pediatrics location'),
+             data=ped_hamilton[c(250,300, 350),]) +
+  scale_fill_viridis_d(direction = -1, option = 'B') +
+  scale_color_manual(values=c('Pediatrics location'='black')) +
+  scale_x_continuous(expand=c(0,0)) +
+  scale_y_continuous(expand=c(0,0)) +
+  coord_sf(xlim = bb_x, ylim = bb_y) +
+  labs(fill = "travel time\n(in minutes)", color='') +
+  theme_minimal() +
+  theme(axis.title = element_blank())
+```
+```{r}
+tm_shape(x) + tm_dots("travel_time")
+```
+
+
+
+```{r}
+# filtering nearest distance only
+near_dist <- ttm  %>%  
+  group_by(toId) %>% 
+  summarize(near_dist = min(travel_time)) %>%
+  replace(is.na(.), 999) %>%
+  rename(id = toId) %>%
+  left_join(tract_sel, by="id")
+st_geometry(near_dist) <- "geometry"  
+
+
+print(paste0("Number of grid where transit trips to school is not possible: ", nrow(grid) - nrow(near_dist)))
+
+
+tm_shape(near_dist) + tm_polygons("near_dist") + tm_borders(lwd = 0) +
+  tm_shape(ped_hamilton[c(100,200),]) + tm_dots("red", size = 0.05) +
+  tm_scale_bar(width = 0.32, position = c(.5,.85)) + 
+  tm_compass(size=3,position = c(.8,.5)) + 
+  tm_layout(frame = T, title = "Isochrone", 
+            title.size = 1.5, title.position = c(.05,.95), legend.outside = T, legend.position = c(.1,.5))
+
+
+# creating isochrones by dissolving into time cut offs
+
+cut <- list(10,15,20,30,45)
+for(i in 1:length(cut)){
+  iso <- near_dist %>%
+    filter(near_dist<cut[i]) %>%
+    st_union() %>%
+    st_as_sf() %>%
+    mutate(if(i==1){cutoff=paste0("0-",cut[i], " minutes")} else{cutoff=paste0(cut[i-1], "-",cut[i], " minutes")})
+  
+  if(i==1){all_iso = iso } else{
+    all_iso=rbind(iso,all_iso)}
+} 
+
+colnames(all_iso)[1]<- "cutoff"
+
+
+head(all_iso)
+
+
+tmap_mode("view")
+tm_shape(all_iso) + tm_polygons("cutoff", alpha=0.7, style = "jenks",palette = "Spectral", 
+                                  title = "Travel time \nIsochrones") + tm_borders("gray", alpha=1, lwd = .2) + tm_shape(place) + tm_borders("black", lwd = .5) +
+  tm_shape(place) + tm_borders("black") +
+  tm_shape(ped_hamilton[c(100,200),]) + tm_dots("red", size = 0.2) +
+  tm_scale_bar(width = 0.32, position = c(.5,.85)) + 
+  tm_compass(size=3,position = c(.8,.5)) + 
+  tm_layout(frame = T, title = "Isochrone", 
+            title.size = 1.5, title.position = c(.05,.95), legend.outside = T, legend.position = c(.1,.5))
+
+hamilton_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_hamilton.gpkg") 
+tm_shape(hamilton_T) + tm_fill("time", style = "cat")
+
+```
+
+```{r}
+tm_shape(hamilton_T) + tm_fill("time", style = "cat")
+```
+

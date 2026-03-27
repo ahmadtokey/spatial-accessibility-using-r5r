@@ -1,0 +1,57 @@
+---
+title: "arcgis_try"
+output: html_document
+date: "2022-09-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("arcgisbinding")
+library(arcgisbinding)
+
+arc.check_product()
+```
+
+```{r}
+vax <- arc.open(path="C:/study/public health/CDC/shapes/fac_franklin.shp")
+
+vax_fr <- arc.data2sf(arc.select(vax, names(vax@fields))) #make dataframe by select and sf format by data2sf
+
+head(vax_fr)
+
+tmap_mode("view")
+
+tm_shape(vax_fr[1:5,]) + tm_dots() #plot first five points
+
+```
+
+```{r}
+install.packages(c("RPyGeo","magrittr" ))
+library("RPyGeo")
+library("sf")
+library("reticulate")
+library("magrittr")
+```
+
+
+```{r}
+use_python("C:/Program Files/ArcGIS/Pro/bin/Python/envs/arcgispro-py3/python.exe", required=TRUE)
+py_config()
+import_from_path('arcpy', "C:/Program Files/ArcGIS/Pro/bin/Python/envs/arcgispro-py3/python.exe")
+arcpy <- rpygeo_build_env(path = "C:/Program Files/ArcGIS/Pro/bin/Python/envs/arcgispro-py3/python.exe",
+                          workspace = tempdir(),
+                          overwrite = TRUE,
+                          extensions = "Network Analyst" 
+                          )
+# link to follow implementation
+# https://cran.r-project.org/web/packages/RPyGeo/vignettes/RPyGeo.html
+
+
+#Error in py_run_string_impl(code, local, convert) : 
+#File "<string>", line 1
+#SyntaxError: (unicode error) 'unicodeescape' codec can't decode bytes in position 2-3: truncated \UXXXXXXXX escape
+```
+

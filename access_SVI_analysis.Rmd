@@ -1,0 +1,688 @@
+---
+title: "city13"
+output: html_document
+date: "2022-10-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## processing
+
+```{r}
+# gather all isochrones, merge them for each county by time threshold (5 time, 2 mode, 13 county)
+# gather all block groups, filter by and add county name in table
+# add population, area, kids population, non-CTV to BG
+# add SVI and ADI to BG
+# add binary values if the BG is under transit isochrones and car isochrones
+
+
+```
+
+```{r}
+library(sf)
+library(tmap)
+library(dplyr)
+
+
+```
+
+
+```{r}
+# gather all isochrones
+
+allen_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_allen.gpkg")  #read all isochrones
+allen_T600 <- st_sf(st_union(allen_T[allen_T$time==600,])) %>% rename(geometry=1) # breaking into time threshold
+allen_T900 <- st_sf(st_union(allen_T[allen_T$time==900,])) %>% rename(geometry=1)
+allen_T1200 <- st_sf(st_union(allen_T[allen_T$time==1200,])) %>% rename(geometry=1)
+allen_T1800 <- st_sf(st_union(allen_T[allen_T$time==1800,])) %>% rename(geometry=1)
+allen_T2700 <- st_sf(st_union(allen_T[allen_T$time==2700,])) %>% rename(geometry=1)
+
+
+athens_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_athens.gpkg")  #read all isochrones
+athens_T600 <- st_sf(st_union(athens_T[athens_T$time==600,])) %>% rename(geometry=1)
+athens_T900 <- st_sf(st_union(athens_T[athens_T$time==900,])) %>% rename(geometry=1)
+athens_T1200 <- st_sf(st_union(athens_T[athens_T$time==1200,])) %>% rename(geometry=1)
+athens_T1800 <- st_sf(st_union(athens_T[athens_T$time==1800,])) %>% rename(geometry=1)
+athens_T2700 <- st_sf(st_union(athens_T[athens_T$time==2700,])) %>% rename(geometry=1)
+
+
+butler_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_butler.gpkg")  #read all isochrones
+butler_T600 <- st_sf(st_union(butler_T[butler_T$time==600,])) %>% rename(geometry=1)
+butler_T900 <- st_sf(st_union(butler_T[butler_T$time==900,])) %>% rename(geometry=1)
+butler_T1200 <- st_sf(st_union(butler_T[butler_T$time==1200,])) %>% rename(geometry=1)
+butler_T1800 <- st_sf(st_union(butler_T[butler_T$time==1800,])) %>% rename(geometry=1)
+butler_T2700 <- st_sf(st_union(butler_T[butler_T$time==2700,])) %>% rename(geometry=1)
+
+
+cuyahoga_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_cuyahoga.gpkg")  #read all isochrones
+cuyahoga_T600 <- st_sf(st_union(cuyahoga_T[cuyahoga_T$time==600,])) %>% rename(geometry=1)
+cuyahoga_T900 <- st_sf(st_union(cuyahoga_T[cuyahoga_T$time==900,])) %>% rename(geometry=1)
+cuyahoga_T1200 <- st_sf(st_union(cuyahoga_T[cuyahoga_T$time==1200,])) %>% rename(geometry=1)
+cuyahoga_T1800 <- st_sf(st_union(cuyahoga_T[cuyahoga_T$time==1800,])) %>% rename(geometry=1)
+cuyahoga_T2700 <- st_sf(st_union(cuyahoga_T[cuyahoga_T$time==2700,])) %>% rename(geometry=1)
+
+
+erie_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_erie.gpkg")  #read all isochrones
+erie_T600 <- st_sf(st_union(erie_T[erie_T$time==600,])) %>% rename(geometry=1)
+erie_T900 <- st_sf(st_union(erie_T[erie_T$time==900,])) %>% rename(geometry=1)
+erie_T1200 <- st_sf(st_union(erie_T[erie_T$time==1200,])) %>% rename(geometry=1)
+erie_T1800 <- st_sf(st_union(erie_T[erie_T$time==1800,])) %>% rename(geometry=1)
+erie_T2700 <- st_sf(st_union(erie_T[erie_T$time==2700,])) %>% rename(geometry=1)
+
+
+franklin_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_franklin.gpkg")  #read all isochrones
+franklin_T600 <- st_sf(st_union(franklin_T[franklin_T$time==600,])) %>% rename(geometry=1)
+franklin_T900 <- st_sf(st_union(franklin_T[franklin_T$time==900,])) %>% rename(geometry=1)
+franklin_T1200 <- st_sf(st_union(franklin_T[franklin_T$time==1200,])) %>% rename(geometry=1)
+franklin_T1800 <- st_sf(st_union(franklin_T[franklin_T$time==1800,])) %>% rename(geometry=1)
+franklin_T2700 <- st_sf(st_union(franklin_T[franklin_T$time==2700,])) %>% rename(geometry=1)
+
+
+hamilton_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_hamilton.gpkg")  #read all isochrones
+hamilton_T600 <- st_sf(st_union(hamilton_T[hamilton_T$time==600,])) %>% rename(geometry=1)
+hamilton_T900 <- st_sf(st_union(hamilton_T[hamilton_T$time==900,])) %>% rename(geometry=1)
+hamilton_T1200 <- st_sf(st_union(hamilton_T[hamilton_T$time==1200,])) %>% rename(geometry=1)
+hamilton_T1800 <- st_sf(st_union(hamilton_T[hamilton_T$time==1800,])) %>% rename(geometry=1)
+hamilton_T2700 <- st_sf(st_union(hamilton_T[hamilton_T$time==2700,])) %>% rename(geometry=1)
+
+
+
+lucas_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_lucas.gpkg")  #read all isochrones
+lucas_T600 <- st_sf(st_union(lucas_T[lucas_T$time==600,])) %>% rename(geometry=1)
+lucas_T900 <- st_sf(st_union(lucas_T[lucas_T$time==900,])) %>% rename(geometry=1)
+lucas_T1200 <- st_sf(st_union(lucas_T[lucas_T$time==1200,])) %>% rename(geometry=1)
+lucas_T1800 <- st_sf(st_union(lucas_T[lucas_T$time==1800,])) %>% rename(geometry=1)
+lucas_T2700 <- st_sf(st_union(lucas_T[lucas_T$time==2700,])) %>% rename(geometry=1)
+
+
+
+montgomery_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_montgomery.gpkg")  #read all isochrones
+montgomery_T600 <- st_sf(st_union(montgomery_T[montgomery_T$time==600,])) %>% rename(geometry=1)
+montgomery_T900 <- st_sf(st_union(montgomery_T[montgomery_T$time==900,])) %>% rename(geometry=1)
+montgomery_T1200 <- st_sf(st_union(montgomery_T[montgomery_T$time==1200,])) %>% rename(geometry=1)
+montgomery_T1800 <- st_sf(st_union(montgomery_T[montgomery_T$time==1800,])) %>% rename(geometry=1)
+montgomery_T2700 <- st_sf(st_union(montgomery_T[montgomery_T$time==2700,])) %>% rename(geometry=1)
+
+
+
+portage_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_portage.gpkg")  #read all isochrones
+portage_T600 <- st_sf(st_union(portage_T[portage_T$time==600,])) %>% rename(geometry=1)
+portage_T900 <- st_sf(st_union(portage_T[portage_T$time==900,])) %>% rename(geometry=1)
+portage_T1200 <- st_sf(st_union(portage_T[portage_T$time==1200,])) %>% rename(geometry=1)
+portage_T1800 <- st_sf(st_union(portage_T[portage_T$time==1800,])) %>% rename(geometry=1)
+portage_T2700 <- st_sf(st_union(portage_T[portage_T$time==2700,])) %>% rename(geometry=1)
+
+
+
+
+stark_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_stark.gpkg")  #read all isochrones
+stark_T600 <- st_sf(st_union(stark_T[stark_T$time==600,])) %>% rename(geometry=1)
+stark_T900 <- st_sf(st_union(stark_T[stark_T$time==900,])) %>% rename(geometry=1)
+stark_T1200 <- st_sf(st_union(stark_T[stark_T$time==1200,])) %>% rename(geometry=1)
+stark_T1800 <- st_sf(st_union(stark_T[stark_T$time==1800,])) %>% rename(geometry=1)
+stark_T2700 <- st_sf(st_union(stark_T[stark_T$time==2700,])) %>% rename(geometry=1)
+
+
+
+summit_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_summit.gpkg")  #read all isochrones
+summit_T600 <- st_sf(st_union(summit_T[summit_T$time==600,])) %>% rename(geometry=1)
+summit_T900 <- st_sf(st_union(summit_T[summit_T$time==900,])) %>% rename(geometry=1)
+summit_T1200 <- st_sf(st_union(summit_T[summit_T$time==1200,])) %>% rename(geometry=1)
+summit_T1800 <- st_sf(st_union(summit_T[summit_T$time==1800,])) %>% rename(geometry=1)
+summit_T2700 <- st_sf(st_union(summit_T[summit_T$time==2700,])) %>% rename(geometry=1)
+
+
+trum_maho_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_trum_maho.gpkg")  #read all isochrones
+trum_maho_T600 <- st_sf(st_union(trum_maho_T[trum_maho_T$time==600,])) %>% rename(geometry=1)
+trum_maho_T900 <- st_sf(st_union(trum_maho_T[trum_maho_T$time==900,])) %>% rename(geometry=1)
+trum_maho_T1200 <- st_sf(st_union(trum_maho_T[trum_maho_T$time==1200,])) %>% rename(geometry=1)
+trum_maho_T1800 <- st_sf(st_union(trum_maho_T[trum_maho_T$time==1800,])) %>% rename(geometry=1)
+trum_maho_T2700 <- st_sf(st_union(trum_maho_T[trum_maho_T$time==2700,])) %>% rename(geometry=1)
+
+
+
+# merging all isochrones by time
+county_names <- c("allen", "athens", "butler", "cuyahoga", "erie", "franklin", "hamilton", "lucas", "montgomery", "portage", "stark", "summit", "trum_maho")
+
+county_namesC <- c("Allen", "Athens", "Butler", "Cuyahoga", "Erie", "Franklin", "Hamilton", "Lucas", "Montgomery", "Portage", "Stark", "Summit", "Trumbull", "Mahoning")
+
+
+
+T13_600 <- rbind(allen_T600, athens_T600, butler_T600,cuyahoga_T600,erie_T600,franklin_T600,hamilton_T600,lucas_T600,montgomery_T600,portage_T600,stark_T600, trum_maho_T600,summit_T600) %>%
+  mutate(travel_time="10 min") %>%
+  st_transform("EPSG:4269")#all 10 min appended
+
+T13_900 <- rbind(allen_T900, athens_T900, butler_T900,cuyahoga_T900,erie_T900,franklin_T900,hamilton_T900,lucas_T900,montgomery_T900,portage_T900,stark_T900, trum_maho_T900,summit_T900) %>%
+  mutate(travel_time="15 min") %>%
+  st_transform("EPSG:4269")#all 15 min appended
+
+T13_1200 <- rbind(allen_T1200, athens_T1200, butler_T1200,cuyahoga_T1200,erie_T1200,franklin_T1200,hamilton_T1200,lucas_T1200,montgomery_T1200,portage_T1200,stark_T1200, trum_maho_T1200,summit_T1200) %>%
+  mutate(travel_time="20 min") %>%
+  st_transform("EPSG:4269")#all 20 min appended
+
+T13_1800 <- rbind(allen_T1800, athens_T1800, butler_T1800,cuyahoga_T1800,erie_T1800,franklin_T1800,hamilton_T1800,lucas_T1800,montgomery_T1800,portage_T1800,stark_T1800, trum_maho_T1800,summit_T1800) %>%
+  mutate(travel_time="30 min") %>%
+  st_transform("EPSG:4269")#all 30 min appended
+
+T13_2700 <- rbind(allen_T2700, athens_T2700, butler_T2700,cuyahoga_T2700,erie_T2700,franklin_T2700,hamilton_T2700,lucas_T2700,montgomery_T2700,portage_T2700,stark_T2700, trum_maho_T2700,summit_T2700) %>%
+  mutate(travel_time="45 min") %>%
+  st_transform("EPSG:4269")
+#all 45 min appended
+
+getwd()
+
+st_write(T13_2700,dsn = paste0("C:/study/public health/",'transit_45.shp'),delete_dsn=T)
+
+#st_crs(T13_900)==st_crs(bg)
+
+x <- T13_2700 %>% group_by(geometry) %>% st_union()
+
+head(T13_2700)
+
+tmap_options(check.and.fix = TRUE)
+tmap_mode("view")
+
+colnames(trum_maho_T2700)
+
+# plotting 
+tm_shape(T13_600) + tm_borders(col="black") +
+  tm_shape(T13_900) + tm_borders(col="blue") +
+  tm_shape(T13_1200) + tm_borders(col="green") +
+  tm_shape(T13_1800) + tm_borders(col="red") +
+  tm_shape(T13_2700) + tm_borders(col="orange") 
+ 
+
+```
+
+```{r}
+#install.packages("readxl")
+library(readxl)
+library(data.table)
+
+bg <-st_read("C:/study/public health/access_gap/acs/cb_2018_39_bg_500k/cb_2018_39_bg_500k.shp")  #read block group shapefile
+
+acs <-read_xlsx("C:/study/public health/access_gap/acs/combined.xlsx")  #read acs data to join
+setDT(acs)[, paste0("Geography", 1:2) := tstrsplit(Geography, "US")] #split full GEOID into 12 digit
+acs<-subset(acs, select = -c(Geography,Geography1)) %>% rename(GEOID=Geography2) #remove the old columns
+
+
+```
+
+#joining acs with bg
+```{r}
+
+bg <- left_join(bg, acs, by="GEOID") #joined
+
+bg<- bg%>% mutate(pop_change=pop-pop19) #just explore
+```
+
+
+```{r}
+```
+
+# joining isochrones
+
+```{r}
+sf_use_s2(FALSE)
+
+#y<-st_intersects(bg,T13_2700, sparse = FALSE) # output: all bg, true false; may need later to do by bg centroid
+
+T27<- bg[T13_2700,] %>%  #taking portion of bg that is under isochrones
+  mutate(T13_2700=1) %>%  # add column with 1 for future dummy
+  st_drop_geometry() %>%  # make data frame
+  subset(select=c(GEOID,T13_2700)) #just select the fields I need
+
+
+T06<- bg[T13_600,] %>%  #taking portion of bg that is under isochrones
+  mutate(T13_600=1) %>%  # add column with 1 for future dummy
+  st_drop_geometry() %>%  # make data frame
+  subset(select=c(GEOID,T13_600))
+
+T09<- bg[T13_900,] %>%  #taking portion of bg that is under isochrones
+  mutate(T13_900=1) %>%  # add column with 1 for future dummy
+  st_drop_geometry() %>%  # make data frame
+  subset(select=c(GEOID,T13_900))
+
+
+T12<- bg[T13_1200,] %>%  #taking portion of bg that is under isochrones
+  mutate(T13_1200=1) %>%  # add column with 1 for future dummy
+  st_drop_geometry() %>%  # make data frame
+  subset(select=c(GEOID,T13_1200))
+
+
+T18<- bg[T13_1800,] %>%  #taking portion of bg that is under isochrones
+  mutate(T13_1800=1) %>%  # add column with 1 for future dummy
+  st_drop_geometry() %>%  # make data frame
+  subset(select=c(GEOID,T13_1800))
+
+
+#add that 1/NA dataframe
+bg <-  bg %>% left_join(T06, by="GEOID") %>%  
+  left_join(T09, by="GEOID")%>%  
+  left_join(T12, by="GEOID")%>%  
+  left_join(T18, by="GEOID")%>%  
+  left_join(T27, by="GEOID")   
+
+
+#replace NA with 0 
+bg <- bg %>% mutate(T13_600 =coalesce(T13_600,0),
+                    T13_900 =coalesce(T13_900,0),
+                    T13_1200 =coalesce(T13_1200,0),
+                    T13_1800 =coalesce(T13_1800,0),
+                    T13_2700 =coalesce(T13_2700,0)) 
+# add car isochrone
+Car15 <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/carIsochrone15min_8_26.shp") %>%  st_transform("EPSG:4269") #read isochrones
+
+# optional: check isochrones for particular county
+county_sel <- counties("ohio") %>%
+  st_transform(4269) %>%
+  filter(NAME=="Lucas")
+
+Car15_sel <- Car15[county_sel,]
+
+tm_shape(Car15_sel) + tm_borders()
+
+
+C15<- bg[Car15,] %>%  #taking portion of bg that is under isochrones
+  mutate(C15=1) %>%  # add column with 1 for future dummy
+  st_drop_geometry() %>%  # make data frame
+  subset(select=c(GEOID,C15))
+
+bg <-  bg %>% left_join(C15, by="GEOID") # add with NA
+bg <- bg %>% mutate(C15 =coalesce(C15,0)) #replace NA with 0
+
+# making access variables factor
+access_var <- c("T13_600", "T13_900", "T13_1200", "T13_1800", "T13_2700", "C15")
+#bg[,access_var] <- lapply(bg[,access_var], as.factor)
+#above code did not work for some reason
+
+bg$T13_600 <- as.factor(bg$T13_600)
+bg$T13_900 <- as.factor(bg$T13_900)
+bg$T13_1200 <- as.factor(bg$T13_1200)
+bg$T13_1800 <- as.factor(bg$T13_1800)
+bg$T13_2700 <- as.factor(bg$T13_2700)
+bg$C15 <- as.factor(bg$C15)
+ 
+```
+
+
+```{r}
+# add pediatric locations
+facility <- st_read("C:/study/public health/CDC/shapes/pediatric_vax2.shp") %>%  st_transform("EPSG:4269") 
+
+
+                    
+head(bg)
+
+```
+
+#adding ADI data (incomplete for join key)
+
+```{r}
+#adi <-read.csv("C:/study/public health/access_gap/ADI_cbg.csv")  #read acs data to join
+#setDT(acs)[, paste0("GISJOIN", 1:2) := tstrsplit(GISJOIN, "G")] #split full GEOID into 12 digit
+#acs<-subset(acs, select = -c(Geography,Geography1)) %>% rename(GEOID=Geography2) #remove the old columns
+
+```
+# clipping BG from county boundary
+
+
+```{r}
+oh_county <-st_read("C:/study/public health/access_gap/acs/cb_2018_us_county_20m/cb_2018_us_county_20m.shp") %>% #read block group shapefile
+  filter(STATEFP==39)%>%
+  filter(NAME %in% county_namesC) %>%
+  st_drop_geometry() %>%
+  subset(select=c(COUNTYFP,NAME)) #have 14 counties 
+
+#join name of county with and mutate few variables in bg
+library(tidyr)
+
+bg <- left_join(bg, oh_county, by="COUNTYFP")  # dd by countyFP
+
+bg<- bg %>% mutate(pop_dens=pop/(ALAND/ 2.59e+6), kids_perc = under5/pop*100, no_vehicle_perc =no_vehicle/HH*100, nonCTV_perc=100-(CTV/woker16*100), area_sqmi = ALAND/ 2.59e+6 )
+
+# export the non-spatial table
+st_write(bg,dsn = paste0("C:/study/public health/access_gap",'bg_14C_Oct10.csv'),delete_dsn=T)
+```
+
+# adding SVI to bg
+```{r}
+
+svi <-read.csv("C:/study/public health/heat/zip_SVI/Ohio_SVI_CT.csv") %>% #read acs data to join
+  subset(select=c("FIPS","RPL_THEME1","RPL_THEME2","RPL_THEME3","RPL_THEME4","RPL_THEMES"))
+
+svi$FIPS <-   as.character(svi$FIPS) 
+
+bg$FIPS <- paste(bg$STATEFP,bg$COUNTYFP,bg$TRACTCE, sep = "")
+
+bg <- left_join(bg,svi,by="FIPS")
+
+```
+
+
+# get county boundary
+```{r}
+
+library(tidyr)
+county_border <- bg %>%
+  group_by(NAME.y) %>% 
+  summarize(geometry = st_union(geometry)) %>%
+  drop_na(NAME.y) %>% st_as_sf()
+library(tigris)
+ohio <- states() %>% filter(STUSPS=="OH") %>% st_transform("EPSG:4269") 
+
+tmap_mode("plot")
+study_area <- tm_shape(ohio) + tm_borders() + tm_fill("gray", alpha = .5) +
+tm_shape(county_border) + tm_fill("tomato") + tm_borders(lty = "dashed", col = "gold")  +
+tm_scale_bar(width = 0.22, position = c(.0,.01)) + 
+  tm_compass(size=3.5,position = c(.8,.1)) + 
+  tm_layout(frame = F, title = "Pediatric Vaccine Centers \n in Study Area", 
+      title.size = 1.2, title.position = c(.05,.95)) +
+  tm_shape(facility) + tm_dots("blue", size=.15, alpha=0.5, legend.show = T) +
+tm_shape(county_border) + tm_text("NAME.y", size = 0.7, col = "black")
+  
+study_area
+
+facility14 <- facility[county_border,]
+```
+
+# get dissolved shape for car isochrones
+
+```{r}
+
+Car_union = st_join(Car15, county_border["NAME.y"]) %>% group_by(NAME.y) %>% 
+  summarize(geometry = st_union(geometry)) %>%
+  drop_na(NAME.y) %>% st_as_sf()
+
+tm_shape(Car_union) + tm_borders()
+```
+
+
+
+```{r}
+# plotting
+library(GISTools)
+display.brewer.all()[1]
+brewer.pal(5,'Spectral')
+```
+
+
+```{r}
+tmap_mode("plot")
+map2 <- tm_shape(Car_union) + tm_fill("cyan", alpha = 0.3) +
+  tm_shape(T13_2700) + tm_fill(col="#D7191C") +
+  tm_shape(T13_1800) + tm_fill(col="#FDAE61") +
+  tm_shape(T13_1200) + tm_fill(col="#FFFFBF") +
+  tm_shape(T13_900) + tm_fill(col="#ABDDA4") +
+  tm_shape(T13_600) + tm_fill(col="#2B83BA") + 
+  tm_shape(facility14) + tm_dots("yellow", size = .01) +
+  tm_shape(county_border) + tm_borders(lwd = .75) + tm_text("NAME.y") + tm_facets(by="NAME.y")
+
+tmap_save(map2, "C:/study/public health/access_gap/county14.png", dpi = 500)
+```
+
+
+
+#explore
+
+```{r}
+class(svi$FIPS)
+
+head(bg2)#$FIPS)
+
+
+
+bg2 <- bg %>% st_centroid()
+
+bg2 <- st_join(bg2, oh_county["NAME"], join = st_within)
+
+plot(bg2)
+
+head(county)
+
+x <- x %>% subset(select=c(GEOID,T13_2700))
+class(x)
+
+class(bg[T13_2700,]$GEOID)
+nrow(oh_county)
+class(bg2)
+head(bg2)
+colnames(bg2)
+
+summary(bg$T13_2700)#==1)
+
+y[5]
+
+nrow(x)
+
+#plot test 
+
+tm_shape(bg2) + tm_dots("NAME.y") + 
+  tm_shape(oh_county) + tm_borders(col="red",lwd = 2.5)
+
+head(acs)
+class(acs$Geography2)
+
+acs<- str_split_fixed(acs$Geography, "US", 2)
+
+ ## v 1.9.6+ 
+
+
+```
+
+#plotting boxplot
+
+```{r}
+library(ggplot2)
+ggplot(clean_SVI_bg, aes(NAME.y, RPL_THEMES , fill = factor(T13_2700))) + 
+  geom_boxplot() +
+  scale_fill_manual(name = "transit accessibility",
+                    values = c("firebrick3", "light green"),
+                    labels = c("1"="Accessible","0"="Not Accessible")) +
+  xlab("County") +
+  ylab("SVI of block groups") #+
+  #ylim(-0.1,1.1)
+```
+
+# T test significance for SVI
+
+```{r}
+clean_SVI_bg <- bg %>% filter(RPL_THEMES!=-999)
+
+for(i in 1:length(county_namesC)){
+  n<-paste0(county_namesC[i])
+  c <- filter(clean_SVI_bg, NAME.y==n)
+  t<- t.test(RPL_THEMES ~ T13_600, data = c)
+  print(paste0(n, t[3]))
+}
+```
+
+# boxplot bivariate for SES
+
+```{r}
+clean_SES_bg <- bg %>% drop_na(no_vehicle_perc)
+b <- ggplot(clean_SES_bg, aes(no_vehicle_perc, kids_perc, color = T13_2700))+
+  geom_point()
+
+for(i in 1:length(county_namesC)){
+  n<-paste0(county_namesC[i])
+  df <- filter(clean_SES_bg, NAME.y==n)
+  p <- ggplot(df, aes(no_vehicle_perc, kids_perc, color = T13_2700))+
+  geom_point()
+  print(p)
+}
+
+
+```
+
+# boxplot for SES
+```{r}
+library(ggplot2)
+ggplot(clean_SES_bg, aes(NAME.y, kids_perc , fill = factor(T13_1200))) + 
+  geom_boxplot() +
+  scale_fill_manual(name = "transit accessibility",
+                    values = c("firebrick3", "light green"),
+                    labels = c("1"="Accessible","0"="Not Accessible")) +
+  xlab("County") +
+  ylab("kids percentage")
+```
+
+
+# significance for SES
+```{r}
+for(i in 1:length(county_namesC)){
+  n<-paste0(county_namesC[i])
+  c <- filter(clean_SES_bg, NAME.y==n)
+  t<- t.test(kids_perc ~ T13_600, data = c)
+  print(paste0(n, t[3]))
+}
+```
+
+
+
+# logit models
+
+```{r}
+# Franklin, Montgomery, Cuyahoga, Summit, Hamilton, Mahoning, Lucas, Stark, Allen
+
+clean_SES_4logit <- filter(clean_SES_bg, NAME.y=="Hamilton")
+
+mod10 <- glm(T13_600 ~ no_vehicle_perc * kids_perc , data = clean_SES_4logit, family = "binomial")
+mod15 <- glm(T13_900 ~ no_vehicle_perc + kids_perc , data = clean_SES_4logit, family = "binomial")
+mod20 <- glm(T13_1200 ~ no_vehicle_perc * kids_perc , data = clean_SES_4logit, family = "binomial")
+mod30 <- glm(T13_1800 ~ no_vehicle_perc + kids_perc , data = clean_SES_4logit, family = "binomial")
+mod45 <- glm(T13_2700 ~ no_vehicle_perc + kids_perc , data = clean_SES_4logit, family = "binomial")
+
+#summary(mod45)
+
+#install.packages("rsm")
+#library(rsm)
+op <- par(mfcol=c(1,3))
+contour(mod10, no_vehicle_perc ~ kids_perc, image=T)
+contour(mod15, no_vehicle_perc ~ kids_perc, image=T)
+contour(mod20, no_vehicle_perc ~ kids_perc, image=T)
+contour(mod30, no_vehicle_perc ~ kids_perc, image=T)
+contour(mod45, no_vehicle_perc ~ kids_perc, image=T)
+
+
+ggplot(mydata,aes(pred1, out, colour=factor(pred2_level))) +
+  geom_jitter(alpha=.3) +
+  geom_smooth(method=lm)
+
+```
+
+# using ggplot
+```{r}
+clean_SES_bg %>% 
+  mutate(pred_logit = predict(mod20)) -> clean_SES_bg
+
+clean_SES_bg %>% 
+  ggplot() +
+  aes(x = no_vehicle_perc, y = kids_perc, color = pred_logit) +
+  geom_point() 
+
+
+```
+
+
+```{r}
+# 13 transit isochrones 
+allen_T <-st_read("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_allen.gpkg")
+
+head(allen_T_merge)
+
+county_name<- c("allen", "athens", "butler", "cuyahoga", "erie", "franklin", "hamilton", "lucas", "montgomery", "portage", "stark", "summit", "trum_maho")
+
+file_name[2]
+
+file_name<- list()
+# make file name for each county (e.g., allen_T)
+for(i in 1:length(county_name)){
+  n<-paste0(county_name[i],"_T")  #allen_T
+  file_name[[i]]<- n 
+}
+
+county_time_name<- list()
+
+for(i in 1:length(file_name)){
+  assign(paste0(file_name[i]), st_read(paste0("C:/study/R_experiment/COVIDPediatricVacAccess/isochoneTransit_",county_name[i],".gpkg"))) # make file names sf object with all the isochrones of vax locations (e.g., allen_T has 35 isochrone in 5 times for 7 vax locations)
+  
+  for (j in 1:length(times)){
+    t<-paste0(file_name[i],times[j]) #make names like allen_T900
+    county_time_name[[j+((i-1)*length(times))]]<-t #populate the empty list with names
+    }
+}
+
+##############
+for(i in 1:length(file_name)){
+  for (j in 1:length(times)){
+    assign(paste0(county_time_name[j+((i-1)*length(times))]),st_sf(st_union(paste0(file_name[i])[paste0(file_name[i],"$time")==times[j],])))
+  }
+}
+
+times <- c(600,900,1200,1800,2700)
+
+
+file_name[4]
+times[2]
+
+for(i in 1:length(file_name)){
+  for (j in 1:length(times)){
+    t<-paste0(file_name[i],times[j]) #allen_T900
+    county_time_name[[j+((i-1)*j)]]<-t
+  }
+}
+num <- list()
+for(i in 1:3){
+  for(j in 1:5){
+    t <- paste0(i,"_",j)
+   num[[j+((i-1)*5)]]<-t 
+  }
+}
+
+for(i in 1:length(county_time_name)){
+  assign(paste0(county_time_name[i]),st_sf(st_union(paste0(file_name[(i%/%length(times))+1])[paste0(file_name[(i%/%length(times))+1],"$time")==times[(i%%length(times))+1],])))
+}
+
+
+#assign(paste0(file_name[4],times[2]),st_sf(st_union(paste0(file_name[4])[paste0(file_name[4],"$time")==times[2],]))
+       
+county_time_name[3+((2-1)*length(times))]    
+       
+       # erie_T900 <- st_sf(st_union(erie_T[erie_T$time==900,]))
+       
+
+       
+       assign("")
+
+paste0(file_name[4])
+paste0(file_name[4],"$time")
+erie_T[erie_T$time==times[2],]
+class(erie_T900)
+
+
+
+#6,9,12,18,27
+
+x <- st_sf(st_union(allen_T[allen_T$time==1200,]))
+
+class(x)
+
+head(allen_T_merge)
+
+st_cast(allen_T_merge,)
+
+tm_shape(allen_T_merge) + tm_polygons("time")
+
+allen_T_merge = allen_T %>% 
+  group_by(time) %>% 
+  summarise() %>%
+  st_sf()
+  st_union())
+
+  summarise(count=n()) %>% 
+  st_cast()
+```
+
