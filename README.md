@@ -1,0 +1,1 @@
+This repository contains R Markdown files that are used to calculate isochrones as an accessibility measure from population centers to pediatric vaccination centers. The analysis includes working with the social vulnerability index as well. 
